@@ -152,42 +152,89 @@ function doPost(e) {
     const timestamp =
       Utilities.formatDate(now, TIMEZONE, "yyyy-MM-dd HH:mm:ss");
 
-    let fotoUrl = "";
-    let fotoFileId = "";
+    const photoUrls = [];
+    const photoFileIds = [];
 
     /**
-     * Jika frontend mengirim foto base64, simpan ke Google Drive.
+     * Handle multi-foto (array) atau single foto (legacy)
      */
-    if (data.fotoBase64 && String(data.fotoBase64).trim() !== "") {
-      const savedFoto = saveFotoToDrive(data, transactionId);
-      fotoUrl = savedFoto.url;
-      fotoFileId = savedFoto.fileId;
+    const photosToProcess = [];
+    if (Array.isArray(data.photos) && data.photos.length > 0) {
+      photosToProcess.push(...data.photos);
+    } else if (data.fotoBase64 && String(data.fotoBase64).trim() !== "") {
+      photosToProcess.push({
+        fotoBase64: data.fotoBase64,
+        fotoMime: data.fotoMime || "image/jpeg",
+        fotoNama: data.fotoNama || "foto.jpg"
+      });
     }
 
-    const rowData = [
-      transactionId,
-      timestamp,
-      data.tanggal || Utilities.formatDate(now, TIMEZONE, "yyyy-MM-dd"),
-      data.jenisTransaksi || "Pengambilan",
-      data.namaMandor || "-",
-      data.lokasiProyek || "-",
-      data.kodeMaterial || "-",
-      data.deskripsiMaterial || "-",
-      Number(data.qty) || 0,
-      data.satuan || "Pcs",
-      data.keterangan || "-",
-      fotoUrl,
-      fotoFileId
-    ];
+    for (let p = 0; p < photosToProcess.length; p++) {
+      const pData = photosToProcess[p];
+      if (pData && pData.fotoBase64 && String(pData.fotoBase64).trim() !== "") {
+        const savedFoto = saveFotoToDrive(pData, transactionId + (photosToProcess.length > 1 ? "-" + (p + 1) : ""), data);
+        if (savedFoto.url) photoUrls.push(savedFoto.url);
+        if (savedFoto.fileId) photoFileIds.push(savedFoto.fileId);
+      }
+    }
 
-    logSheet.appendRow(rowData);
+    const fotoUrlString = photoUrls.join("\n");
+    const fotoFileIdString = photoFileIds.join(", ");
+
+    /**
+     * Handle multi-material (array) atau single material (legacy)
+     */
+    let itemsToProcess = [];
+    if (Array.isArray(data.items) && data.items.length > 0) {
+      itemsToProcess = data.items;
+    } else if (Array.isArray(data.materials) && data.materials.length > 0) {
+      itemsToProcess = data.materials;
+    } else {
+      itemsToProcess = [{
+        kodeMaterial: data.kodeMaterial || "-",
+        deskripsiMaterial: data.deskripsiMaterial || "-",
+        qty: Number(data.qty) || 0,
+        satuan: data.satuan || "Pcs",
+        keterangan: data.keterangan || "-"
+      }];
+    }
+
+    const rowsToAdd = [];
+
+    for (let i = 0; i < itemsToProcess.length; i++) {
+      const item = itemsToProcess[i];
+      const itemKet = item.keterangan || data.keterangan || "-";
+
+      rowsToAdd.push([
+        transactionId,
+        timestamp,
+        data.tanggal || Utilities.formatDate(now, TIMEZONE, "yyyy-MM-dd"),
+        data.jenisTransaksi || "Pengambilan",
+        data.namaMandor || "-",
+        data.lokasiProyek || "-",
+        item.kodeMaterial || item.code || "-",
+        item.deskripsiMaterial || item.description || "-",
+        Number(item.qty) || 0,
+        item.satuan || "Pcs",
+        itemKet,
+        fotoUrlString,
+        fotoFileIdString
+      ]);
+    }
+
+    if (rowsToAdd.length > 0) {
+      const lastRow = logSheet.getLastRow();
+      logSheet.getRange(lastRow + 1, 1, rowsToAdd.length, rowsToAdd[0].length).setValues(rowsToAdd);
+    }
 
     return jsonOutput({
       status: "success",
       transactionId: transactionId,
-      fotoUrl: fotoUrl,
-      fotoFileId: fotoFileId,
-      message: "Data transaksi berhasil dicatat ke Google Sheets."
+      totalItems: rowsToAdd.length,
+      totalPhotos: photoUrls.length,
+      fotoUrls: photoUrls,
+      fotoFileIds: photoFileIds,
+      message: `${rowsToAdd.length} material transaksi berhasil dicatat ke Google Sheets.`
     });
 
   } catch (error) {
@@ -260,8 +307,8 @@ function setupLogSheet() {
  * SIMPAN FOTO KE GOOGLE DRIVE
  * ============================================================
  */
-function saveFotoToDrive(data, transactionId) {
-  const base64Full = String(data.fotoBase64 || "");
+function saveFotoToDrive(photoData, fileSuffix, parentData) {
+  const base64Full = String(photoData.fotoBase64 || "");
 
   if (!base64Full.trim()) {
     return {
@@ -292,7 +339,7 @@ function saveFotoToDrive(data, transactionId) {
     throw new Error("Format foto base64 tidak valid.");
   }
 
-  const contentType = String(data.fotoMime || "image/jpeg").toLowerCase();
+  const contentType = String(photoData.fotoMime || "image/jpeg").toLowerCase();
 
   let ext = "jpg";
 
@@ -309,7 +356,7 @@ function saveFotoToDrive(data, transactionId) {
   const folder = getOrCreateFolder(PHOTO_FOLDER_NAME);
 
   const fileName =
-    transactionId +
+    fileSuffix +
     "-" +
     Utilities.formatDate(new Date(), TIMEZONE, "HHmmss") +
     "." +
@@ -319,10 +366,13 @@ function saveFotoToDrive(data, transactionId) {
 
   const file = folder.createFile(blob);
 
+  const mandor = (parentData && parentData.namaMandor) || "-";
+  const proyek = (parentData && parentData.lokasiProyek) || "-";
+
   file.setDescription(
-    "Transaksi: " + transactionId +
-    " | Material: " + (data.deskripsiMaterial || "-") +
-    " | Mandor: " + (data.namaMandor || "-")
+    "Transaksi: " + fileSuffix +
+    " | Mandor: " + mandor +
+    " | Proyek: " + proyek
   );
 
   /**
