@@ -290,9 +290,15 @@
             <i data-lucide="boxes" class="w-3.5 h-3.5"></i> Daftar Material Transaksi
           </p>
 
-          <span id="itemsSummaryBadge" class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-200">
-            1 Item
-          </span>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="refreshMaterials()" id="refreshMatBtn" title="Sinkron ulang data dari Spreadsheet"
+              class="text-[11px] font-bold text-slate-600 hover:text-accent bg-slate-100 hover:bg-slate-200 active:scale-95 px-2.5 py-1 rounded-xl border border-slate-200 flex items-center gap-1.5 transition-all">
+              <i id="refreshMatIcon" data-lucide="refresh-cw" class="w-3 h-3"></i> Sync Data
+            </button>
+            <span id="itemsSummaryBadge" class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-200">
+              1 Item
+            </span>
+          </div>
         </div>
 
         <!-- CONTAINER KARTU MATERIAL -->
@@ -445,22 +451,22 @@
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycby2SQc-jJ9tddcVmpInEk1DDRp9MNlE1BIfS2BluUaNcM1CgEDZmqDGZq-kNJ8JpHjdXg/exec";
 
-    const MATERIAL_CACHE_KEY = 'material_cache_v1';
+    const MATERIAL_CACHE_KEY = 'material_cache_v2';
     const KOTA_LIST = ['Lampung', 'Bengkulu', 'Palembang', 'Semarang'];
     const KOTA_STORAGE_KEY = 'inventaris_selected_kota';
     let currentKota = localStorage.getItem(KOTA_STORAGE_KEY) || 'Lampung';
 
     const DUMMY_MATERIALS = [
-      { code: "KBL-FO-12C", description: "Kabel Fiber Optik 12 Core", type: "KABEL" },
-      { code: "POL-7M", description: "Pole / Tiang Besi 7 Meter", type: "TIANG" },
-      { code: "CLS-24", description: "Closure Dome 24 Core", type: "CLOSURE" },
-      { code: "FAT-8P", description: "FAT 8 Port", type: "FAT" }
+      { id: "dm_1", code: "KBL-FO-12C", description: "Kabel Fiber Optik 12 Core", type: "KABEL" },
+      { id: "dm_2", code: "POL-7M", description: "Pole / Tiang Besi 7 Meter", type: "TIANG" },
+      { id: "dm_3", code: "CLS-24", description: "Closure Dome 24 Core", type: "CLOSURE" },
+      { id: "dm_4", code: "FAT-8P", description: "FAT 8 Port", type: "FAT" }
     ];
 
     let mode = 'keluar';
     let history = [];
     let MATERIALS = [];
-    let formItems = []; // Array of { id, code, description, type, qty, satuan, kondisi }
+    let formItems = []; // Array of { id, materialId, code, description, type, qty, satuan, kondisi }
     let uploadedPhotos = []; // Array of { id, base64, mime, name, size }
 
     const $ = id => document.getElementById(id);
@@ -487,23 +493,34 @@
     /***********************
      * DATA MATERIAL API
      ***********************/
-    async function initMaterials() {
-      // 1. Cek Cache Lokal
-      try {
-        const cached = sessionStorage.getItem(MATERIAL_CACHE_KEY);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length) {
-            MATERIALS = parsed;
-            renderAllMaterialRows();
-            setStatus('success', `Cache • ${MATERIALS.length} material`);
+    async function refreshMaterials() {
+      const icon = $('refreshMatIcon');
+      if (icon) icon.classList.add('animate-spin');
+      showToast('🔄 Memperbarui daftar material dari Spreadsheet...');
+      await initMaterials(true);
+      if (icon) icon.classList.remove('animate-spin');
+      showToast(`✅ Data material berhasil disinkronkan (${MATERIALS.length} material).`);
+    }
+
+    async function initMaterials(forceFresh = false) {
+      // 1. Cek Cache Lokal jika tidak dipaksa refresh
+      if (!forceFresh) {
+        try {
+          const cached = sessionStorage.getItem(MATERIAL_CACHE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length) {
+              MATERIALS = parsed;
+              renderAllMaterialRows();
+              setStatus('success', `Cache • ${MATERIALS.length} material`);
+            }
           }
+        } catch (err) {
+          console.error('Cache error:', err);
         }
-      } catch (err) {
-        console.error('Cache error:', err);
       }
 
-      if (!MATERIALS.length) {
+      if (!MATERIALS.length || forceFresh) {
         setStatus('loading', 'Memuat material...');
       }
 
@@ -512,7 +529,8 @@
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000);
 
-        const res = await fetch(API_URL, {
+        const fetchUrl = `${API_URL}?_t=${Date.now()}${forceFresh ? '&nocache=1' : ''}`;
+        const res = await fetch(fetchUrl, {
           method: 'GET',
           cache: 'no-store',
           signal: controller.signal
@@ -525,10 +543,11 @@
           throw new Error(json.message || 'Respons API tidak valid');
         }
 
-        const fresh = (json.data || []).map(item => ({
-          code: item.code || '-',
+        const fresh = (json.data || []).map((item, idx) => ({
+          id: item.id || `mat_${idx + 1}`,
+          code: (item.code && item.code !== '-') ? item.code : '-',
           description: item.description || '-',
-          type: item.type || 'UMUM'
+          type: (item.type && item.type !== '-') ? item.type : 'UMUM'
         }));
 
         try {
@@ -559,7 +578,8 @@
     function addMaterialRow() {
       const newItem = {
         id: 'mat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-        code: '',
+        materialId: '',
+        code: '-',
         description: '',
         type: '',
         qty: 1,
@@ -583,15 +603,17 @@
       const item = formItems.find(it => it.id === itemId);
       if (!item) return;
 
-      if (field === 'code') {
-        const mat = MATERIALS.find(m => m.code === value);
+      if (field === 'materialId') {
+        const mat = MATERIALS.find(m => m.id === value);
         if (mat) {
-          item.code = mat.code;
+          item.materialId = mat.id;
+          item.code = mat.code || '-';
           item.description = mat.description;
           item.type = mat.type;
           item.satuan = guessSatuan(mat.type);
         } else {
-          item.code = '';
+          item.materialId = '';
+          item.code = '-';
           item.description = '';
           item.type = '';
         }
@@ -639,15 +661,16 @@
 
         let optionsHtml = '<option value="">-- Pilih Material --</option>';
         Object.keys(grouped).sort().forEach(type => {
-          optionsHtml += `<optgroup label="${esc(type)}">`;
+          optionsHtml += `<optgroup label="📦 ${esc(type)}">`;
           grouped[type].forEach(mat => {
-            const isSelected = mat.code === item.code ? 'selected' : '';
-            optionsHtml += `<option value="${esc(mat.code)}" ${isSelected}>${esc(mat.description)} • ${esc(mat.code)}</option>`;
+            const isSelected = mat.id === item.materialId ? 'selected' : '';
+            // Hanya tampilkan deskripsi material agar rapi dan bersih
+            optionsHtml += `<option value="${esc(mat.id)}" ${isSelected}>${esc(mat.description)}</option>`;
           });
           optionsHtml += '</optgroup>';
         });
 
-        const hasSelected = !!item.code;
+        const hasSelected = !!item.description;
 
         html += `
           <div class="p-4 rounded-2xl border ${hasSelected ? 'border-slate-200 bg-slate-50/50' : 'border-dashed border-slate-300 bg-slate-50/30'} space-y-3 relative">
@@ -665,10 +688,10 @@
               ` : ''}
             </div>
 
-            <!-- SELECT MATERIAL -->
+            <!-- SELECT MATERIAL (DESKRIPSI SAJA) -->
             <div class="relative">
-              <select onchange="updateItemField('${item.id}', 'code', this.value)"
-                class="w-full pl-3.5 pr-10 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-accent/20 outline-none transition-all font-semibold text-sm appearance-none">
+              <select onchange="updateItemField('${item.id}', 'materialId', this.value)"
+                class="w-full pl-3.5 pr-10 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-accent/20 outline-none transition-all font-semibold text-sm appearance-none text-slate-800">
                 ${optionsHtml}
               </select>
               <div class="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
@@ -677,9 +700,15 @@
             </div>
 
             ${hasSelected ? `
-              <div class="flex flex-wrap items-center gap-1.5">
-                <span class="px-2 py-1 rounded-md text-[10px] font-bold text-white bg-accent">${esc(item.type || 'UMUM')}</span>
-                <span class="px-2 py-1 rounded-md text-[10px] font-bold bg-white text-slate-600 border border-slate-200 font-mono">${esc(item.code)}</span>
+              <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold text-accent bg-accent-soft border border-accent/20">
+                  ${esc(item.type || 'UMUM')}
+                </span>
+                ${item.code && item.code !== '-' ? `
+                  <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white text-slate-500 border border-slate-200 font-mono">
+                    Kode: ${esc(item.code)}
+                  </span>
+                ` : ''}
               </div>
             ` : ''}
 
@@ -1019,7 +1048,7 @@
       const mandorOk = $('mandor').value.trim() !== '';
       const proyekOk = $('proyek').value.trim() !== '';
 
-      const validItems = formItems.filter(item => item.code && item.qty > 0);
+      const validItems = formItems.filter(item => item.description && item.description.trim() !== '' && item.qty > 0);
       const itemsOk = validItems.length > 0 && validItems.length === formItems.length;
 
       $('submitBtn').disabled = !(kotaOk && mandorOk && proyekOk && itemsOk);
@@ -1071,7 +1100,7 @@
                 <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs">
                   <div>
                     <p class="font-extrabold text-slate-800">${idx + 1}. ${esc(item.description)}</p>
-                    <p class="text-slate-400 font-mono text-[11px]">${esc(item.code)} ${!isOut && item.kondisi ? `• [${esc(item.kondisi)}]` : ''}</p>
+                    <p class="text-slate-400 font-mono text-[11px]">${esc(item.type || 'UMUM')} ${item.code && item.code !== '-' ? `• Kode: ${esc(item.code)}` : ''} ${!isOut && item.kondisi ? `• [${esc(item.kondisi)}]` : ''}</p>
                   </div>
                   <span class="font-extrabold text-sm text-slate-700 whitespace-nowrap bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
                     ${esc(item.qty)} ${esc(item.satuan)}

@@ -50,10 +50,11 @@ function doGet(e) {
       });
     }
 
+    const forceFresh = e && e.parameter && (e.parameter.nocache === "1" || e.parameter.action === "refresh");
     const cache = CacheService.getScriptCache();
-    const cached = cache.get(MATERIAL_CACHE_KEY);
+    const cached = forceFresh ? null : cache.get(MATERIAL_CACHE_KEY);
 
-    // Jika cache masih ada, langsung kembalikan cache agar cepat
+    // Jika cache masih ada dan bukan force refresh, kembalikan cache
     if (cached) {
       return ContentService
         .createTextOutput(cached)
@@ -88,11 +89,21 @@ function doGet(e) {
         currentType = typeVal;
       }
 
-      if (descVal !== "") {
+      let finalDesc = descVal;
+      let finalCode = codeVal;
+
+      // Toleransi jika user mengisi deskripsi di kolom B (kolom C kosong)
+      if (!finalDesc && finalCode) {
+        finalDesc = finalCode;
+        finalCode = "-";
+      }
+
+      if (finalDesc !== "") {
         materials.push({
+          id: `mat_${i + 1}`,
           type: currentType || "-",
-          code: codeVal || "-",
-          description: descVal
+          code: finalCode || "-",
+          description: finalDesc
         });
       }
     }
