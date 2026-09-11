@@ -99,9 +99,32 @@ function doGet(e) {
       }
 
       if (finalDesc !== "") {
+        let detectedType = currentType || "-";
+        // Auto klasifikasi tipe jika kosong atau tanda strip
+        if (!detectedType || detectedType === "-" || detectedType.toUpperCase() === "UMUM") {
+          const upperDesc = finalDesc.toUpperCase();
+          if (upperDesc.includes("ADSS") || upperDesc.includes("KABEL") || upperDesc.includes("CABLE") || upperDesc.includes("FO") || upperDesc.includes("FIBER") || upperDesc.includes("PATCH CORD") || upperDesc.includes("PIGTAIL")) {
+            detectedType = "KABEL";
+          } else if (upperDesc.includes("POLE") || upperDesc.includes("TIANG")) {
+            detectedType = "POLE";
+          } else if (upperDesc.includes("CLOSURE") || upperDesc.includes("JOINT")) {
+            detectedType = "CLOSURE";
+          } else if (upperDesc.includes("FDT")) {
+            detectedType = "FDT";
+          } else if (upperDesc.includes("FAT") || upperDesc.includes("ODP")) {
+            detectedType = "FAT";
+          } else if (upperDesc.includes("SPLITTER")) {
+            detectedType = "SPLITTER";
+          } else if (upperDesc.includes("HDPE") || upperDesc.includes("SUBDUCT")) {
+            detectedType = "SUBDUCT HDPE";
+          } else if (upperDesc.includes("BEND") || upperDesc.includes("STOPPING") || upperDesc.includes("CAP") || upperDesc.includes("CLAMP") || upperDesc.includes("BRACKET") || upperDesc.includes("ACC")) {
+            detectedType = "AKSESORIS";
+          }
+        }
+
         materials.push({
           id: `mat_${i + 1}`,
-          type: currentType || "-",
+          type: detectedType || "-",
           code: finalCode || "-",
           description: finalDesc
         });

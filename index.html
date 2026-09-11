@@ -543,12 +543,16 @@
           throw new Error(json.message || 'Respons API tidak valid');
         }
 
-        const fresh = (json.data || []).map((item, idx) => ({
-          id: item.id || `mat_${idx + 1}`,
-          code: (item.code && item.code !== '-') ? item.code : '-',
-          description: item.description || '-',
-          type: (item.type && item.type !== '-') ? item.type : 'UMUM'
-        }));
+        const fresh = (json.data || []).map((item, idx) => {
+          const desc = item.description || '-';
+          const type = inferMaterialType(item.type, desc);
+          return {
+            id: item.id || `mat_${idx + 1}`,
+            code: (item.code && item.code !== '-') ? item.code : '-',
+            description: desc,
+            type: type
+          };
+        });
 
         try {
           sessionStorage.setItem(MATERIAL_CACHE_KEY, JSON.stringify(fresh));
@@ -610,7 +614,7 @@
           item.code = mat.code || '-';
           item.description = mat.description;
           item.type = mat.type;
-          item.satuan = guessSatuan(mat.type);
+          item.satuan = guessSatuan(mat.type, mat.description);
         } else {
           item.materialId = '';
           item.code = '-';
@@ -953,9 +957,28 @@
       }
     }
 
-    function guessSatuan(type) {
-      const t = (type || '').toUpperCase();
-      if (t.includes('KABEL') || t.includes('CABLE') || t.includes('FO')) return 'Meter (m)';
+    function inferMaterialType(rawType, desc) {
+      const cleanType = (rawType || '').trim();
+      if (cleanType && cleanType !== '-' && cleanType.toUpperCase() !== 'UMUM') {
+        return cleanType;
+      }
+      const upper = (desc || '').toUpperCase();
+      if (upper.includes('ADSS') || upper.includes('KABEL') || upper.includes('CABLE') || upper.includes('FO') || upper.includes('FIBER') || upper.includes('PATCH CORD') || upper.includes('PIGTAIL')) {
+        return 'KABEL';
+      }
+      if (upper.includes('POLE') || upper.includes('TIANG')) return 'POLE';
+      if (upper.includes('CLOSURE') || upper.includes('JOINT')) return 'CLOSURE';
+      if (upper.includes('FDT')) return 'FDT';
+      if (upper.includes('FAT') || upper.includes('ODP')) return 'FAT';
+      if (upper.includes('SPLITTER')) return 'SPLITTER';
+      if (upper.includes('HDPE') || upper.includes('SUBDUCT')) return 'SUBDUCT HDPE';
+      if (upper.includes('BEND') || upper.includes('STOPPING') || upper.includes('CAP') || upper.includes('CLAMP') || upper.includes('BRACKET') || upper.includes('ACC')) return 'ACC';
+      return cleanType || 'UMUM';
+    }
+
+    function guessSatuan(type, description = '') {
+      const t = ((type || '') + ' ' + (description || '')).toUpperCase();
+      if (t.includes('ADSS') || t.includes('KABEL') || t.includes('CABLE') || t.includes('FO') || t.includes('HDPE') || t.includes('SUBDUCT')) return 'Meter (m)';
       if (t.includes('TIANG') || t.includes('POLE')) return 'Batang';
       if (t.includes('CLOSURE') || t.includes('FAT') || t.includes('FDT') || t.includes('ODP') || t.includes('SPLITTER')) return 'Set / Unit';
       return 'Pcs / Buah';
