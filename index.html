@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Logistik & Material — Inventaris Gudang</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://script.google.com" crossorigin />
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin />
+
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif']
+          },
+          boxShadow: {
+            soft: '0 8px 30px rgba(15, 23, 42, 0.06)'
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body.mode-keluar {
+      --accent: #2563eb;
+      --accent-dark: #1d4ed8;
+      --accent-soft: #eff6ff;
+      --accent-border: #bfdbfe;
+      --accent-text: #1d4ed8;
+    }
+
+    body.mode-masuk {
+      --accent: #059669;
+      --accent-dark: #047857;
+      --accent-soft: #ecfdf5;
+      --accent-border: #a7f3d0;
+      --accent-text: #047857;
+    }
+
+    .bg-accent {
+      background-color: var(--accent);
+    }
+
+    .text-accent {
+      color: var(--accent-text);
+    }
+
+    .border-accent {
+      border-color: var(--accent);
+    }
+
+    .bg-accent-soft {
+      background-color: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent-text);
+    }
+
+    #segIndicator {
+      background-color: var(--accent);
+    }
+
+    .kondisi-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent-text);
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+
+    select,
+    input,
+    textarea {
+      font-size: 16px;
+    }
+
+    .bg-mesh {
+      background-color: #f8fafc;
+      background-image:
+        radial-gradient(at 0% 0%, rgba(59, 130, 246, .07) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(16, 185, 129, .06) 0px, transparent 50%);
+    }
+
+    #submitWrapper {
+      padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+      background: linear-gradient(to top, rgba(248, 250, 252, .98), rgba(248, 250, 252, 0));
+    }
+
+    @media (min-width: 1024px) {
+      #submitWrapper {
+        position: static;
+        inset: auto;
+        padding-bottom: 0;
+        background: none;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-mesh min-h-screen text-slate-800 antialiased mode-keluar">
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-white/75 border-b border-slate-200/70">
+    <div class="max-w-md mx-auto lg:max-w-7xl px-4 py-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-11 h-11 rounded-2xl bg-accent flex items-center justify-center shrink-0 shadow-lg">
+          <i data-lucide="package" class="w-6 h-6 text-white"></i>
+        </div>
+
+        <div class="min-w-0">
+          <h1 class="text-sm md:text-base font-extrabold tracking-tight leading-tight truncate">
+            Logistik & Material
+          </h1>
+          <p class="text-[11px] text-slate-500 font-medium truncate">
+            Pencatatan Mandor Lapangan
+          </p>
+        </div>
+      </div>
+
+      <div id="connBadge" class="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200 shrink-0">
+        <span class="relative flex h-2 w-2 shrink-0">
+          <span id="connDot" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75"></span>
+          <span id="connDotSolid" class="relative inline-flex rounded-full h-2 w-2 bg-slate-400"></span>
+        </span>
+        <span id="connText" class="truncate max-w-[130px] lg:max-w-none">Menghubungkan...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="max-w-md mx-auto lg:max-w-7xl px-4 py-4 pb-36 lg:pb-10 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+
+    <!-- LEFT / FORM -->
+    <div class="space-y-4 lg:space-y-5 min-w-0 lg:col-span-2">
+
+      <!-- MODE -->
+      <section class="bg-white rounded-3xl shadow-soft p-4 lg:p-6 border border-slate-100">
+        <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
+          <i data-lucide="arrow-left-right" class="w-3.5 h-3.5"></i> Arah Transaksi
+        </p>
+
+        <div class="relative grid grid-cols-2 bg-slate-100 rounded-2xl p-1.5 gap-1">
+          <div id="segIndicator" class="absolute top-1.5 left-1.5 h-[calc(100%-12px)] w-[calc(50%-6px)] rounded-xl shadow-lg transition-transform duration-300"></div>
+
+          <button id="btnOut" onclick="setMode('keluar')"
+            class="relative z-10 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 text-white transition-colors">
+            <i data-lucide="log-out" class="w-4 h-4"></i> Pengambilan
+          </button>
+
+          <button id="btnIn" onclick="setMode('masuk')"
+            class="relative z-10 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 text-slate-500 transition-colors">
+            <i data-lucide="log-in" class="w-4 h-4"></i> Pengembalian
+          </button>
+        </div>
+
+        <div id="modeHint" class="mt-3 text-xs bg-accent-soft border rounded-xl px-3 py-2.5 font-medium flex items-start gap-2">
+          <i data-lucide="info" class="w-4 h-4 mt-0.5 shrink-0"></i>
+          <span id="modeHintText">Barang keluar dari gudang untuk kebutuhan proyek di lapangan.</span>
+        </div>
+      </section>
+
+      <!-- DATA DASAR -->
+      <section class="bg-white rounded-3xl shadow-soft p-4 lg:p-6 border border-slate-100">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <i data-lucide="calendar" class="w-3.5 h-3.5"></i> Tanggal Transaksi
+            </label>
+            <input type="date" id="tanggal"
+              class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white outline-none transition-all font-semibold" />
+          </div>
+
+          <div>
+            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <i data-lucide="hard-hat" class="w-3.5 h-3.5"></i> Nama Mandor / Pengambil
+            </label>
+            <input type="text" id="mandor" placeholder="cth: Budi Santoso"
+              class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white outline-none transition-all font-semibold" />
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Nama Proyek / Titik Lokasi
+            </label>
+            <input type="text" id="proyek" placeholder="cth: FTTH Kelapa Gading - ODP 04"
+              class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white outline-none transition-all font-semibold" />
+          </div>
+        </div>
+      </section>
+
+      <!-- MATERIAL -->
+      <section class="bg-white rounded-3xl shadow-soft p-4 lg:p-6 border border-slate-100 space-y-4">
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+            <i data-lucide="boxes" class="w-3.5 h-3.5"></i> Pilih Material
+          </p>
+
+          <span id="materialCount" class="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-full">
+            -
+          </span>
+        </div>
+
+        <div class="relative">
+          <select id="materialSelect" onchange="onMaterialChange(this.value)" disabled
+            class="w-full pl-4 pr-11 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white outline-none transition-all font-semibold appearance-none disabled:opacity-60">
+            <option value="">Memuat data...</option>
+          </select>
+
+          <div class="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+            <i data-lucide="chevron-down" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div id="selectedInfo" class="hidden flex flex-wrap items-center gap-2">
+          <span id="matTypeBadge" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white bg-accent">TYPE</span>
+          <span id="matCodeBadge" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white text-slate-600 border border-slate-200 font-mono">CODE</span>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <i data-lucide="hash" class="w-3.5 h-3.5"></i> Jumlah (Qty)
+            </label>
+
+            <div class="flex items-stretch gap-3">
+              <button type="button" onclick="changeQty(-1)"
+                class="w-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center border border-slate-200">
+                <i data-lucide="minus" class="w-5 h-5 text-slate-600"></i>
+              </button>
+
+              <input type="number" id="qty" min="1" value="1"
+                class="flex-1 min-w-0 text-center text-2xl font-extrabold rounded-2xl border-2 border-slate-200 outline-none transition-all py-2.5" />
+
+              <button type="button" onclick="changeQty(1)"
+                class="w-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center border border-slate-200">
+                <i data-lucide="plus" class="w-5 h-5 text-slate-600"></i>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <i data-lucide="ruler" class="w-3.5 h-3.5"></i> Satuan Ukuran
+            </label>
+
+            <div class="relative">
+              <select id="satuan"
+                class="w-full pl-4 pr-11 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white outline-none transition-all font-semibold appearance-none">
+                <option>Pcs / Buah</option>
+                <option>Meter (m)</option>
+                <option>Batang</option>
+                <option>Set / Unit</option>
+                <option>Roll</option>
+                <option>Koil</option>
+              </select>
+
+              <div class="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <i data-lucide="chevron-down" class="w-5 h-5"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KONDISI -->
+        <div id="kondisiBlock" class="hidden">
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+            <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i> Kondisi Barang Dikembalikan
+          </label>
+
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="setKondisi('Bagus / Utuh', this)"
+              class="kondisi-btn px-2 py-3 rounded-2xl border-2 border-slate-200 bg-white text-[11px] font-bold text-slate-500 transition-all active:scale-95 flex flex-col items-center gap-1.5">
+              <i data-lucide="check-circle-2" class="w-5 h-5"></i> Bagus / Utuh
+            </button>
+
+            <button type="button" onclick="setKondisi('Sisa Potongan', this)"
+              class="kondisi-btn px-2 py-3 rounded-2xl border-2 border-slate-200 bg-white text-[11px] font-bold text-slate-500 transition-all active:scale-95 flex flex-col items-center gap-1.5">
+              <i data-lucide="scissors" class="w-5 h-5"></i> Sisa Potongan
+            </button>
+
+            <button type="button" onclick="setKondisi('Rusak / Cacat', this)"
+              class="kondisi-btn px-2 py-3 rounded-2xl border-2 border-slate-200 bg-white text-[11px] font-bold text-slate-500 transition-all active:scale-95 flex flex-col items-center gap-1.5">
+              <i data-lucide="alert-triangle" class="w-5 h-5"></i> Rusak / Cacat
+            </button>
+          </div>
+        </div>
+
+        <!-- FOTO + KETERANGAN -->
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div>
+            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <i data-lucide="camera" class="w-3.5 h-3.5"></i> Foto Pengambilan / Pengembalian
+            </label>
+
+            <input type="file" id="fotoInput" accept="image/*" class="hidden" onchange="handleFoto(this)" />
+
+            <label for="fotoInput" id="fotoBtn"
+              class="w-full h-full min-h-[130px] border-2 border-dashed border-slate-300 rounded-2xl px-4 py-5 flex flex-col items-center justify-center gap-2 text-slate-500 bg-slate-50/60 active:scale-[.99] transition-all cursor-pointer">
+              <i data-lucide="image-plus" class="w-6 h-6"></i>
+              <span id="fotoBtnText" class="text-sm font-bold text-center">Ambil / Pilih Foto</span>
+              <span class="text-[11px] text-slate-400 font-medium text-center">Opsional, otomatis dikompres sebelum dikirim</span>
+            </label>
+
+            <div id="fotoPreview" class="hidden mt-3 relative">
+              <img id="fotoImg" alt="Preview foto" class="w-full h-44 object-cover rounded-2xl border border-slate-200 shadow-soft" />
+
+              <button type="button" onclick="removeFoto()"
+                class="absolute top-2 right-2 w-9 h-9 rounded-full bg-slate-900/70 text-white flex items-center justify-center backdrop-blur active:scale-95 transition-transform">
+                <i data-lucide="x" class="w-4 h-4"></i>
+              </button>
+
+              <p id="fotoSize" class="mt-2 text-[11px] text-slate-400 font-semibold text-center">-</p>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Keterangan / Catatan Tambahan
+            </label>
+
+            <textarea id="ket" rows="5" placeholder="cth: sisa drum kabel ± 30 meter..."
+              class="w-full h-full min-h-[130px] px-4 py-3.5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white outline-none transition-all font-medium resize-none"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- SUBMIT -->
+      <div id="submitWrapper" class="fixed bottom-0 inset-x-0 z-40 px-4 lg:static lg:inset-auto lg:z-auto lg:px-0">
+        <div class="max-w-md mx-auto lg:max-w-none">
+          <button id="submitBtn" onclick="openModal()" disabled
+            class="w-full py-4 rounded-2xl font-extrabold text-white text-base bg-accent disabled:opacity-40 disabled:shadow-none active:scale-[.98] transition-all flex items-center justify-center gap-2 shadow-lg">
+            <i data-lucide="check-circle" class="w-5 h-5"></i>
+            <span id="submitText">Konfirmasi & Simpan Pengambilan</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT / SIDEBAR -->
+    <aside class="mt-4 lg:mt-0 space-y-4 lg:space-y-5 lg:col-span-1 lg:sticky lg:top-20">
+
+      <!-- PETUNJUK -->
+      <section class="bg-white rounded-3xl shadow-soft p-4 lg:p-5 border border-slate-100">
+        <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-1.5">
+          <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Petunjuk Lapangan
+        </p>
+
+        <ol class="space-y-3">
+          <li class="flex gap-3">
+            <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-extrabold flex items-center justify-center shrink-0">1</span>
+            <p class="text-xs text-slate-600 font-medium leading-relaxed">Pastikan nama mandor sesuai penanggung jawab tim di lokasi.</p>
+          </li>
+
+          <li class="flex gap-3">
+            <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-extrabold flex items-center justify-center shrink-0">2</span>
+            <p class="text-xs text-slate-600 font-medium leading-relaxed">Untuk kabel optik, cantumkan perkiraan sisa drum di kolom keterangan.</p>
+          </li>
+
+          <li class="flex gap-3">
+            <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-extrabold flex items-center justify-center shrink-0">3</span>
+            <p class="text-xs text-slate-600 font-medium leading-relaxed">Pilih mode Pengembalian saat barang sisa atau alat dikembalikan ke gudang.</p>
+          </li>
+        </ol>
+      </section>
+
+      <!-- RIWAYAT -->
+      <section class="bg-white rounded-3xl shadow-soft p-4 lg:p-5 border border-slate-100">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+            <i data-lucide="history" class="w-3.5 h-3.5"></i> Aktivitas Terakhir
+          </p>
+
+          <span id="historyCount" class="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-full">0</span>
+        </div>
+
+        <div id="historyList" class="space-y-2 max-h-80 overflow-y-auto pr-1">
+          <div id="historyEmpty" class="text-center py-8">
+            <i data-lucide="inbox" class="w-8 h-8 text-slate-200 mx-auto mb-2"></i>
+            <p class="text-xs text-slate-400 font-medium">Belum ada transaksi pada sesi ini.</p>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <!-- MODAL -->
+  <div id="modal" class="hidden fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+    <div onclick="closeModal()" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"></div>
+
+    <div class="relative w-full md:max-w-lg bg-white rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-extrabold text-lg flex items-center gap-2">
+            <i data-lucide="file-check" class="w-5 h-5 text-accent"></i>
+            Pratinjau Transaksi
+          </h3>
+
+          <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-slate-100 transition-colors">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div id="modalBody" class="space-y-3 text-sm"></div>
+
+        <div class="grid grid-cols-2 gap-3 mt-6">
+          <button onclick="closeModal()"
+            class="py-3.5 rounded-xl border-2 border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-95">
+            Batal
+          </button>
+
+          <button id="confirmBtn" onclick="submitData()"
+            class="py-3.5 rounded-xl font-bold text-white bg-accent transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg">
+            <i data-lucide="send" class="w-4 h-4"></i> Kirim
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[70] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 bg-slate-900 text-white">
+    <i id="toastIcon" data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>
+    <p id="toastMsg" class="text-sm font-semibold">Berhasil!</p>
+  </div>
+
+  <script>
+    /********************************************************************
+     * PENTING:
+     * Tempel URL API Apps Script Anda yang sudah ada di bawah ini.
+     * Saya tidak mengubah URL API Anda.
+     ********************************************************************/
+    const API_URL = "https://script.google.com/macros/s/AKfycby2SQc-jJ9tddcVmpInEk1DDRp9MNlE1BIfS2BluUaNcM1CgEDZmqDGZq-kNJ8JpHjdXg/exec";
+
+    const MATERIAL_CACHE_KEY = 'material_cache_v1';
+
+    const DUMMY_MATERIALS = [
+      { code: "KBL-FO-12C", description: "Kabel Fiber Optik 12 Core", type: "KABEL" },
+      { code: "POL-7M", description: "Pole / Tiang Besi 7 Meter", type: "TIANG" },
+      { code: "CLS-24", description: "Closure Dome 24 Core", type: "CLOSURE" },
+      { code: "FAT-8P", description: "FAT 8 Port", type: "FAT" }
+    ];
+
+    let mode = 'keluar';
+    let selectedMaterial = null;
+    let selectedKondisi = null;
+    let history = [];
+    let MATERIALS = [];
+    let fotoData = null;
+
+    const $ = id => document.getElementById(id);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      $('tanggal').valueAsDate = new Date();
+      lucide.createIcons();
+
+      setMode('keluar');
+      initMaterials();
+
+      ['mandor', 'proyek', 'qty', 'satuan'].forEach(id => {
+        $(id).addEventListener('input', validateForm);
+        $(id).addEventListener('change', validateForm);
+      });
+    });
+
+    /***********************
+     * LOAD MATERIAL CEPAT
+     ***********************/
+    async function initMaterials() {
+      const select = $('materialSelect');
+
+      // 1. Tampilkan cache lokal dulu agar terasa cepat
+      try {
+        const cached = sessionStorage.getItem(MATERIAL_CACHE_KEY);
+
+        if (cached) {
+          const parsed = JSON.parse(cached);
+
+          if (Array.isArray(parsed) && parsed.length) {
+            MATERIALS = parsed;
+            renderMaterialDropdown(MATERIALS, selectedMaterial?.code || '');
+            setStatus('success', `Cache • ${MATERIALS.length} material`);
+            $('materialCount').textContent = `${MATERIALS.length} item`;
+          }
+        }
+      } catch (err) {
+        console.error('Cache error:', err);
+      }
+
+      // Jika tidak ada cache, tampilkan loading
+      if (!MATERIALS.length) {
+        select.innerHTML = '<option value="">Memuat data material...</option>';
+        select.disabled = true;
+        setStatus('loading', 'Memuat material...');
+      }
+
+      // Jika API belum diisi, pakai dummy untuk preview
+      if (!API_URL || API_URL.includes('PASTE_URL_APPS_SCRIPT_DISINI')) {
+        setStatus('warning', 'URL API belum diisi');
+
+        if (!MATERIALS.length) {
+          MATERIALS = DUMMY_MATERIALS;
+          renderMaterialDropdown(MATERIALS, '');
+          $('materialCount').textContent = `${MATERIALS.length} item`;
+        }
+
+        return;
+      }
+
+      // 2. Ambil data terbaru dari API
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+
+        const res = await fetch(API_URL, {
+          method: 'GET',
+          cache: 'no-store',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeout);
+
+        const json = await res.json();
+
+        if (json.status !== 'success') {
+          throw new Error(json.message || 'Respons API tidak valid');
+        }
+
+        const fresh = (json.data || []).map(item => ({
+          code: item.code || '-',
+          description: item.description || '-',
+          type: item.type || 'UMUM'
+        }));
+
+        try {
+          sessionStorage.setItem(MATERIAL_CACHE_KEY, JSON.stringify(fresh));
+        } catch (err) {
+          console.error('Gagal menyimpan cache:', err);
+        }
+
+        const selectedCode = selectedMaterial?.code || select.value || '';
+
+        MATERIALS = fresh;
+        renderMaterialDropdown(MATERIALS, selectedCode);
+
+        setStatus('success', `Online • ${MATERIALS.length} material`);
+        $('materialCount').textContent = `${MATERIALS.length} item`;
+
+      } catch (err) {
+        console.error(err);
+
+        if (MATERIALS.length) {
+          setStatus('warning', 'Pakai cache lokal');
+        } else {
+          setStatus('error', 'Gagal memuat material');
+          select.innerHTML = '<option value="">Gagal memuat material</option>';
+          select.disabled = true;
+        }
+      }
+    }
+
+    function renderMaterialDropdown(list, selectedCode = '') {
+      const select = $('materialSelect');
+
+      if (!list.length) {
+        select.innerHTML = '<option value="">Material tidak tersedia</option>';
+        select.disabled = true;
+        selectedMaterial = null;
+        updateSelectedInfo();
+        return;
+      }
+
+      const grouped = {};
+
+      list.forEach(item => {
+        const type = item.type || 'UMUM';
+        if (!grouped[type]) grouped[type] = [];
+        grouped[type].push(item);
+      });
+
+      let html = '<option value="">-- Pilih Material --</option>';
+
+      Object.keys(grouped).sort().forEach(type => {
+        html += `<optgroup label="${esc(type)}">`;
+
+        grouped[type].forEach(item => {
+          const selected = item.code === selectedCode ? 'selected' : '';
+          html += `<option value="${esc(item.code)}" ${selected}>${esc(item.description)} • ${esc(item.code)}</option>`;
+        });
+
+        html += '</optgroup>';
+      });
+
+      select.innerHTML = html;
+      select.disabled = false;
+
+      if (selectedCode) {
+        selectedMaterial = list.find(item => item.code === selectedCode) || null;
+      }
+
+      updateSelectedInfo();
+      validateForm();
+    }
+
+    /***********************
+     * STATUS KONEKSI
+     ***********************/
+    function setStatus(type, text) {
+      const badge = $('connBadge');
+      const dot = $('connDot');
+      const solid = $('connDotSolid');
+      const txt = $('connText');
+
+      txt.textContent = text;
+
+      badge.className = 'flex items-center gap-2 px-2.5 py-1.5 rounded-full text-[10px] font-bold border shrink-0';
+      dot.className = 'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75';
+      solid.className = 'relative inline-flex rounded-full h-2 w-2';
+
+      if (type === 'success') {
+        badge.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-200');
+        dot.classList.add('bg-emerald-500');
+        solid.classList.add('bg-emerald-500');
+      } else if (type === 'error') {
+        badge.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
+        dot.classList.add('bg-red-500');
+        solid.classList.add('bg-red-500');
+        dot.classList.remove('animate-ping');
+      } else if (type === 'warning') {
+        badge.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-200');
+        dot.classList.add('bg-amber-500');
+        solid.classList.add('bg-amber-500');
+      } else {
+        badge.classList.add('bg-slate-100', 'text-slate-600', 'border-slate-200');
+        dot.classList.add('bg-slate-400');
+        solid.classList.add('bg-slate-400');
+      }
+    }
+
+    /***********************
+     * MATERIAL SELECT
+     ***********************/
+    function onMaterialChange(code) {
+      selectedMaterial = MATERIALS.find(item => item.code === code) || null;
+
+      if (selectedMaterial) {
+        $('satuan').value = guessSatuan(selectedMaterial.type);
+      }
+
+      updateSelectedInfo();
+      validateForm();
+    }
+
+    function updateSelectedInfo() {
+      if (selectedMaterial) {
+        $('selectedInfo').classList.remove('hidden');
+        $('matTypeBadge').textContent = selectedMaterial.type;
+        $('matCodeBadge').textContent = selectedMaterial.code;
+      } else {
+        $('selectedInfo').classList.add('hidden');
+      }
+    }
+
+    function guessSatuan(type) {
+      const t = (type || '').toUpperCase();
+
+      if (t.includes('KABEL') || t.includes('CABLE') || t.includes('FO')) return 'Meter (m)';
+      if (t.includes('TIANG') || t.includes('POLE')) return 'Batang';
+      if (
+        t.includes('CLOSURE') ||
+        t.includes('FAT') ||
+        t.includes('FDT') ||
+        t.includes('ODP') ||
+        t.includes('SPLITTER')
+      ) return 'Set / Unit';
+
+      return 'Pcs / Buah';
+    }
+
+    /***********************
+     * MODE
+     ***********************/
+    function setMode(m) {
+      mode = m;
+      const isOut = mode === 'keluar';
+
+      document.body.classList.toggle('mode-keluar', isOut);
+      document.body.classList.toggle('mode-masuk', !isOut);
+
+      $('segIndicator').style.transform = isOut ? 'translateX(0)' : 'translateX(calc(100% + 4px))';
+
+      $('btnOut').classList.toggle('text-white', isOut);
+      $('btnOut').classList.toggle('text-slate-500', !isOut);
+
+      $('btnIn').classList.toggle('text-white', !isOut);
+      $('btnIn').classList.toggle('text-slate-500', isOut);
+
+      $('modeHintText').textContent = isOut
+        ? 'Barang keluar dari gudang untuk kebutuhan proyek di lapangan.'
+        : 'Barang sisa / alat dikembalikan masuk ke dalam gudang.';
+
+      $('submitText').textContent = isOut
+        ? 'Konfirmasi & Simpan Pengambilan'
+        : 'Konfirmasi & Simpan Pengembalian';
+
+      $('kondisiBlock').classList.toggle('hidden', isOut);
+
+      if (isOut) {
+        selectedKondisi = null;
+        document.querySelectorAll('.kondisi-btn').forEach(btn => btn.classList.remove('active'));
+      }
+
+      lucide.createIcons();
+      validateForm();
+    }
+
+    function changeQty(delta) {
+      const input = $('qty');
+      let value = parseInt(input.value || '1', 10) + delta;
+      input.value = Math.max(1, value);
+      validateForm();
+    }
+
+    function setKondisi(value, btn) {
+      selectedKondisi = value;
+
+      document.querySelectorAll('.kondisi-btn').forEach(item => item.classList.remove('active'));
+      btn.classList.add('active');
+
+      validateForm();
+    }
+
+    /***********************
+     * FOTO
+     ***********************/
+    async function handleFoto(input) {
+      const file = input.files && input.files[0];
+
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        showToast('File harus berupa gambar.', true);
+        input.value = '';
+        return;
+      }
+
+      setFotoLoading(true);
+
+      try {
+        fotoData = await compressImage(file);
+
+        $('fotoImg').src = fotoData.base64;
+        $('fotoSize').textContent = `Ukuran setelah dikompres: ${formatBytes(fotoData.size)}`;
+        $('fotoPreview').classList.remove('hidden');
+        $('fotoBtn').classList.add('hidden');
+      } catch (err) {
+        console.error(err);
+        showToast('Gagal memproses foto. Coba lagi.', true);
+      } finally {
+        setFotoLoading(false);
+      }
+    }
+
+    function setFotoLoading(loading) {
+      $('fotoBtnText').textContent = loading ? 'Memproses foto...' : 'Ambil / Pilih Foto';
+      $('fotoBtn').classList.toggle('opacity-60', loading);
+      $('fotoBtn').classList.toggle('pointer-events-none', loading);
+    }
+
+    function removeFoto() {
+      fotoData = null;
+      $('fotoInput').value = '';
+      $('fotoPreview').classList.add('hidden');
+      $('fotoBtn').classList.remove('hidden');
+      $('fotoImg').src = '';
+      $('fotoSize').textContent = '-';
+    }
+
+    function loadBitmap(file) {
+      if ('createImageBitmap' in window) {
+        return createImageBitmap(file, { imageOrientation: 'from-image' });
+      }
+
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    async function compressImage(file, maxDim = 1600, quality = 0.75) {
+      const bitmap = await loadBitmap(file);
+
+      const width = bitmap.width || bitmap.naturalWidth;
+      const height = bitmap.height || bitmap.naturalHeight;
+
+      const scale = Math.min(1, maxDim / Math.max(width, height));
+      const targetWidth = Math.round(width * scale);
+      const targetHeight = Math.round(height * scale);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+      ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+
+      let result = canvas.toDataURL('image/jpeg', quality);
+
+      while (result.length > 2800000 && quality > 0.35) {
+        quality -= 0.08;
+        result = canvas.toDataURL('image/jpeg', quality);
+      }
+
+      const base64Part = result.split(',')[1] || '';
+      const size = Math.round((base64Part.length * 3) / 4);
+
+      return {
+        base64: result,
+        mime: 'image/jpeg',
+        name: (file.name || 'foto') + '.jpg',
+        size
+      };
+    }
+
+    /***********************
+     * VALIDASI
+     ***********************/
+    function validateForm() {
+      const qty = parseInt($('qty').value, 10);
+
+      const valid =
+        $('mandor').value.trim() !== '' &&
+        $('proyek').value.trim() !== '' &&
+        selectedMaterial !== null &&
+        qty > 0 &&
+        (mode === 'keluar' || selectedKondisi !== null);
+
+      $('submitBtn').disabled = !valid;
+    }
+
+    /***********************
+     * MODAL
+     ***********************/
+    function esc(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function buildKeterangan() {
+      const kondisi = mode === 'masuk' && selectedKondisi ? `[Kondisi: ${selectedKondisi}] ` : '';
+      const note = $('ket').value.trim();
+
+      return (kondisi + (note || '-')).trim() || '-';
+    }
+
+    function openModal() {
+      const isOut = mode === 'keluar';
+
+      const rows = [
+        ['Mode', isOut ? 'Pengambilan (Barang Keluar)' : 'Pengembalian (Barang Masuk)'],
+        ['Tanggal', esc($('tanggal').value)],
+        ['Mandor', esc($('mandor').value)],
+        ['Proyek / Lokasi', esc($('proyek').value)],
+        ['Material', `${esc(selectedMaterial.description)} <span class="text-slate-400 font-mono text-xs">(${esc(selectedMaterial.code)})</span>`],
+        ['Jumlah', `<b>${esc($('qty').value)}</b> ${esc($('satuan').value)}`]
+      ];
+
+      if (!isOut && selectedKondisi) {
+        rows.push(['Kondisi', esc(selectedKondisi)]);
+      }
+
+      if ($('ket').value.trim()) {
+        rows.push(['Keterangan', esc($('ket').value.trim())]);
+      }
+
+      let html = rows.map(([label, value]) => `
+        <div class="flex justify-between gap-4 py-2.5 border-b border-slate-100 last:border-0">
+          <span class="text-slate-400 font-semibold text-xs uppercase tracking-wide shrink-0">${label}</span>
+          <span class="text-slate-800 font-bold text-right text-sm">${value}</span>
+        </div>
+      `).join('');
+
+      if (fotoData) {
+        html += `
+          <div class="mt-3">
+            <p class="text-slate-400 font-semibold text-xs uppercase tracking-wide mb-2">Lampiran Foto</p>
+            <img src="${fotoData.base64}" class="w-full h-40 object-cover rounded-2xl border border-slate-200" alt="Foto transaksi" />
+          </div>
+        `;
+      }
+
+      $('modalBody').innerHTML = html;
+      $('modal').classList.remove('hidden');
+
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      $('modal').classList.add('hidden');
+    }
+
+    /***********************
+     * SUBMIT
+     ***********************/
+    async function submitData() {
+      if (!API_URL || API_URL.includes('PASTE_URL_APPS_SCRIPT_DISINI')) {
+        showToast('Isi API_URL dengan URL Apps Script Anda terlebih dahulu.', true);
+        return;
+      }
+
+      const confirmBtn = $('confirmBtn');
+
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Mengirim...';
+      lucide.createIcons();
+
+      const payload = {
+        tanggal: $('tanggal').value,
+        jenisTransaksi: mode === 'keluar' ? 'Pengambilan' : 'Pengembalian',
+        namaMandor: $('mandor').value.trim(),
+        lokasiProyek: $('proyek').value.trim(),
+        kodeMaterial: selectedMaterial.code,
+        deskripsiMaterial: selectedMaterial.description,
+        qty: parseInt($('qty').value, 10),
+        satuan: $('satuan').value,
+        keterangan: buildKeterangan(),
+        fotoBase64: fotoData ? fotoData.base64 : '',
+        fotoNama: fotoData ? fotoData.name : '',
+        fotoMime: fotoData ? fotoData.mime : ''
+      };
+
+      const jsonPayload = JSON.stringify(payload);
+
+      if (jsonPayload.length > 5000000) {
+        showToast('Foto terlalu besar untuk dikirim. Gunakan foto yang lebih kecil.', true);
+
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i> Kirim';
+        lucide.createIcons();
+
+        return;
+      }
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          body: jsonPayload
+        });
+
+        const text = await res.text();
+
+        let json = null;
+
+        try {
+          json = JSON.parse(text);
+        } catch (e) {
+          // biarkan null jika respons bukan JSON
+        }
+
+        if (!res.ok || (json && json.status === 'error')) {
+          throw new Error((json && json.message) || res.statusText || 'Backend mengembalikan error.');
+        }
+
+        addHistory(payload, json && json.transactionId ? json.transactionId : null);
+
+        showToast('✅ Transaksi dan foto berhasil dicatat ke Google Sheets!');
+        closeModal();
+        resetForm();
+      } catch (err) {
+        console.error(err);
+        showToast('❌ Gagal mengirim: ' + err.message, true);
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i> Kirim';
+        lucide.createIcons();
+      }
+    }
+
+    function resetForm() {
+      $('mandor').value = '';
+      $('proyek').value = '';
+      $('ket').value = '';
+      $('qty').value = 1;
+      $('tanggal').valueAsDate = new Date();
+
+      selectedMaterial = null;
+      selectedKondisi = null;
+
+      $('materialSelect').value = '';
+      updateSelectedInfo();
+
+      document.querySelectorAll('.kondisi-btn').forEach(btn => btn.classList.remove('active'));
+
+      removeFoto();
+      validateForm();
+    }
+
+    /***********************
+     * RIWAYAT
+     ***********************/
+    function addHistory(payload, transactionId) {
+      history.unshift(payload);
+
+      $('historyEmpty')?.remove();
+      $('historyCount').textContent = history.length;
+
+      const isOut = payload.jenisTransaksi === 'Pengambilan';
+
+      const item = document.createElement('div');
+      item.className = 'flex items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-slate-50/50';
+
+      item.innerHTML = `
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isOut ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}">
+          <i data-lucide="${isOut ? 'log-out' : 'log-in'}" class="w-4 h-4"></i>
+        </div>
+
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-bold text-slate-700 truncate">${esc(payload.deskripsiMaterial)}</p>
+          <p class="text-[11px] text-slate-400 font-medium truncate">
+            ${esc(payload.qty)} ${esc(payload.satuan)} • ${esc(payload.namaMandor)}
+          </p>
+          ${transactionId ? `<p class="text-[10px] text-slate-300 font-mono truncate">${esc(transactionId)}</p>` : ''}
+        </div>
+
+        ${payload.fotoBase64 ? '<i data-lucide="camera" class="w-4 h-4 text-slate-400 shrink-0"></i>' : ''}
+      `;
+
+      $('historyList').prepend(item);
+      lucide.createIcons();
+    }
+
+    /***********************
+     * UTIL
+     ***********************/
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '0 B';
+
+      const sizes = ['B', 'KB', 'MB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+
+      return parseFloat((bytes / Math.pow(1024, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function showToast(message, isError = false) {
+      const toast = $('toast');
+      const icon = $('toastIcon');
+
+      $('toastMsg').textContent = message;
+
+      icon.setAttribute('data-lucide', isError ? 'alert-circle' : 'check-circle');
+      icon.className = isError ? 'w-5 h-5 text-red-400' : 'w-5 h-5 text-emerald-400';
+
+      toast.classList.remove('hidden');
+      lucide.createIcons();
+
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
