@@ -156,12 +156,20 @@
         </div>
       </div>
 
-      <div id="connBadge" class="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200 shrink-0">
-        <span class="relative flex h-2 w-2 shrink-0">
-          <span id="connDot" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75"></span>
-          <span id="connDotSolid" class="relative inline-flex rounded-full h-2 w-2 bg-slate-400"></span>
-        </span>
-        <span id="connText" class="truncate max-w-[130px] lg:max-w-none">Menghubungkan...</span>
+      <div class="flex items-center gap-2 shrink-0">
+        <button type="button" onclick="focusKotaSection()" title="Ubah Cabang / Kota"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition-colors">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 text-accent"></i>
+          <span id="headerKotaBadge">Lampung</span>
+        </button>
+
+        <div id="connBadge" class="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200 shrink-0">
+          <span class="relative flex h-2 w-2 shrink-0">
+            <span id="connDot" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75"></span>
+            <span id="connDotSolid" class="relative inline-flex rounded-full h-2 w-2 bg-slate-400"></span>
+          </span>
+          <span id="connText" class="truncate max-w-[130px] lg:max-w-none">Menghubungkan...</span>
+        </div>
       </div>
     </div>
   </header>
@@ -199,8 +207,56 @@
       </section>
 
       <!-- DATA DASAR -->
-      <section class="bg-white rounded-3xl shadow-soft p-4 lg:p-6 border border-slate-100">
-        <div class="grid gap-4 md:grid-cols-2">
+      <section id="sectionDataDasar" class="bg-white rounded-3xl shadow-soft p-4 lg:p-6 border border-slate-100 space-y-4">
+        <!-- PILIH CABANG / KOTA -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="building-2" class="w-3.5 h-3.5"></i> Cabang / Kota Proyek
+            </label>
+            <span class="text-[10px] text-slate-400 font-medium">Bisa diubah jika mau input</span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="kotaSelector">
+            <button type="button" onclick="setKota('Lampung')" id="kotaBtn_Lampung"
+              class="kota-btn py-3 px-3 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[.98]">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Lampung
+            </button>
+
+            <button type="button" onclick="setKota('Bengkulu')" id="kotaBtn_Bengkulu"
+              class="kota-btn py-3 px-3 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[.98]">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Bengkulu
+            </button>
+
+            <button type="button" onclick="setKota('Palembang')" id="kotaBtn_Palembang"
+              class="kota-btn py-3 px-3 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[.98]">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Palembang
+            </button>
+
+            <button type="button" onclick="setKota('Semarang')" id="kotaBtn_Semarang"
+              class="kota-btn py-3 px-3 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[.98]">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Semarang
+            </button>
+          </div>
+
+          <div class="mt-2 flex items-center justify-between">
+            <button type="button" onclick="toggleCustomKota()" id="toggleCustomKotaBtn"
+              class="text-[11px] font-bold text-slate-500 hover:text-accent flex items-center gap-1 transition-colors">
+              <i data-lucide="plus" class="w-3 h-3"></i> Opsi Cabang Lain
+            </button>
+            <span id="selectedKotaHint" class="text-[11px] font-bold text-slate-500">
+              Aktif: <span class="text-accent" id="activeKotaText">Lampung</span>
+            </span>
+          </div>
+
+          <div id="customKotaWrapper" class="hidden mt-2">
+            <input type="text" id="customKotaInput" placeholder="Ketik nama kota / cabang baru..."
+              oninput="handleCustomKotaInput(this.value)"
+              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white outline-none font-semibold text-xs transition-all" />
+          </div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2 pt-2 border-t border-slate-100">
           <div>
             <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
               <i data-lucide="calendar" class="w-3.5 h-3.5"></i> Tanggal Transaksi
@@ -390,6 +446,9 @@
     const API_URL = "https://script.google.com/macros/s/AKfycby2SQc-jJ9tddcVmpInEk1DDRp9MNlE1BIfS2BluUaNcM1CgEDZmqDGZq-kNJ8JpHjdXg/exec";
 
     const MATERIAL_CACHE_KEY = 'material_cache_v1';
+    const KOTA_LIST = ['Lampung', 'Bengkulu', 'Palembang', 'Semarang'];
+    const KOTA_STORAGE_KEY = 'inventaris_selected_kota';
+    let currentKota = localStorage.getItem(KOTA_STORAGE_KEY) || 'Lampung';
 
     const DUMMY_MATERIALS = [
       { code: "KBL-FO-12C", description: "Kabel Fiber Optik 12 Core", type: "KABEL" },
@@ -409,6 +468,9 @@
     document.addEventListener('DOMContentLoaded', () => {
       $('tanggal').valueAsDate = new Date();
       lucide.createIcons();
+
+      // Inisialisasi pilihan kota
+      updateKotaUI();
 
       // Inisialisasi baris item pertama
       addMaterialRow();
@@ -826,6 +888,7 @@
         ? 'Konfirmasi & Simpan Pengambilan'
         : 'Konfirmasi & Simpan Pengembalian';
 
+      updateKotaUI();
       renderAllMaterialRows();
       validateForm();
     }
@@ -870,16 +933,96 @@
     }
 
     /***********************
+     * MANAJEMEN CABANG / KOTA
+     ***********************/
+    function setKota(kota) {
+      currentKota = kota.trim();
+      try {
+        localStorage.setItem(KOTA_STORAGE_KEY, currentKota);
+      } catch (e) {}
+
+      // Jika memilih dari preset button, sembunyikan custom input
+      const isPreset = KOTA_LIST.some(k => k.toLowerCase() === currentKota.toLowerCase());
+      if (isPreset) {
+        $('customKotaWrapper')?.classList.add('hidden');
+        if ($('customKotaInput')) $('customKotaInput').value = '';
+      }
+
+      updateKotaUI();
+      validateForm();
+    }
+
+    function handleCustomKotaInput(val) {
+      if (val.trim()) {
+        currentKota = val.trim();
+        try {
+          localStorage.setItem(KOTA_STORAGE_KEY, currentKota);
+        } catch (e) {}
+        updateKotaUI();
+        validateForm();
+      }
+    }
+
+    function toggleCustomKota() {
+      const wrapper = $('customKotaWrapper');
+      const isHidden = wrapper.classList.contains('hidden');
+      wrapper.classList.toggle('hidden', !isHidden);
+      if (isHidden) {
+        $('customKotaInput').focus();
+      }
+    }
+
+    function focusKotaSection() {
+      const sec = $('sectionDataDasar');
+      if (sec) {
+        sec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function updateKotaUI() {
+      KOTA_LIST.forEach(k => {
+        const btn = $(`kotaBtn_${k}`);
+        if (!btn) return;
+        const isSelected = currentKota.toLowerCase() === k.toLowerCase();
+        if (isSelected) {
+          btn.className = 'kota-btn py-3 px-3 rounded-2xl border text-xs font-extrabold flex items-center justify-center gap-2 transition-all active:scale-[.98] bg-accent text-white border-accent shadow-sm';
+        } else {
+          btn.className = 'kota-btn py-3 px-3 rounded-2xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all active:scale-[.98] bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200';
+        }
+      });
+
+      const headerBadge = $('headerKotaBadge');
+      if (headerBadge) {
+        headerBadge.textContent = currentKota;
+      }
+
+      const activeText = $('activeKotaText');
+      if (activeText) {
+        activeText.textContent = currentKota;
+      }
+
+      const customInput = $('customKotaInput');
+      const isPreset = KOTA_LIST.some(k => k.toLowerCase() === currentKota.toLowerCase());
+      if (!isPreset && customInput) {
+        customInput.value = currentKota;
+        $('customKotaWrapper')?.classList.remove('hidden');
+      }
+
+      lucide.createIcons();
+    }
+
+    /***********************
      * VALIDASI FORM
      ***********************/
     function validateForm() {
+      const kotaOk = !!currentKota && currentKota.trim() !== '';
       const mandorOk = $('mandor').value.trim() !== '';
       const proyekOk = $('proyek').value.trim() !== '';
 
       const validItems = formItems.filter(item => item.code && item.qty > 0);
       const itemsOk = validItems.length > 0 && validItems.length === formItems.length;
 
-      $('submitBtn').disabled = !(mandorOk && proyekOk && itemsOk);
+      $('submitBtn').disabled = !(kotaOk && mandorOk && proyekOk && itemsOk);
     }
 
     /***********************
@@ -897,6 +1040,13 @@
           <div class="flex justify-between py-2 border-b border-slate-100">
             <span class="text-xs text-slate-400 font-bold uppercase">Mode Transaksi</span>
             <span class="text-sm font-bold ${isOut ? 'text-blue-600' : 'text-emerald-600'}">${isOut ? 'Pengambilan (Barang Keluar)' : 'Pengembalian (Barang Masuk)'}</span>
+          </div>
+
+          <div class="flex justify-between py-2 border-b border-slate-100">
+            <span class="text-xs text-slate-400 font-bold uppercase">Cabang / Kota</span>
+            <span class="text-sm font-extrabold text-accent flex items-center gap-1.5">
+              <i data-lucide="map-pin" class="w-4 h-4"></i> ${esc(currentKota)}
+            </span>
           </div>
 
           <div class="flex justify-between py-2 border-b border-slate-100">
@@ -989,7 +1139,11 @@
         fotoNama: p.name || `foto-${idx + 1}.jpg`
       }));
 
+      const kota = currentKota || 'Lampung';
+
       const payload = {
+        kota: kota,
+        cabang: kota,
         tanggal: $('tanggal').value,
         jenisTransaksi: mode === 'keluar' ? 'Pengambilan' : 'Pengembalian',
         namaMandor: $('mandor').value.trim(),
@@ -1022,7 +1176,7 @@
         }
 
         addHistory(payload, json?.transactionId);
-        showToast(`✅ Berhasil! ${itemsPayload.length} material & ${photosPayload.length} foto tercatat.`);
+        showToast(`✅ Berhasil! [${kota}] ${itemsPayload.length} material tercatat.`);
         closeModal();
         resetForm();
 
@@ -1076,7 +1230,7 @@
         <div class="min-w-0 flex-1">
           <p class="text-xs font-bold text-slate-700 truncate">${esc(itemTitle)}</p>
           <p class="text-[11px] text-slate-400 font-medium truncate">
-            ${itemsCount} Material • ${esc(payload.namaMandor)}
+            <span class="font-bold text-slate-700 bg-slate-200/70 px-1.5 py-0.5 rounded text-[10px]">${esc(payload.kota || 'Lampung')}</span> • ${itemsCount} Material • ${esc(payload.namaMandor)}
           </p>
           ${transactionId ? `<p class="text-[10px] text-slate-300 font-mono truncate">${esc(transactionId)}</p>` : ''}
         </div>

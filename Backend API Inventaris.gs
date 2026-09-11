@@ -13,7 +13,8 @@
  *
  * 2. Sheet log transaksi: "Log_Transaksi"
  *    - Dibuat otomatis jika belum ada.
- *    - Jika sudah ada tetapi belum punya kolom foto, kolom akan ditambahkan.
+ *    - Mendukung multi-cabang/kota (Lampung, Bengkulu, Palembang, Semarang, dll).
+ *    - Jika sudah ada tetapi belum punya kolom Kota / Cabang atau Foto, kolom akan disinkronkan otomatis.
  *
  * 3. Foto transaksi:
  *    - Disimpan ke Google Drive folder "Foto_Transaksi".
@@ -200,26 +201,52 @@ function doPost(e) {
     }
 
     const rowsToAdd = [];
+    const kota = String(data.kota || data.cabang || "Lampung").trim();
+
+    // Dapatkan pemetaan kolom dinamis berdasarkan header di Google Sheet
+    const headerRow = logSheet.getRange(1, 1, 1, logSheet.getLastColumn()).getDisplayValues()[0];
+    const headerMap = {};
+    headerRow.forEach((h, idx) => {
+      headerMap[String(h || "").trim().toLowerCase()] = idx;
+    });
+
+    const findCol = (keys, fallback) => {
+      for (const k of keys) {
+        for (const h in headerMap) {
+          if (h.includes(k)) return headerMap[h];
+        }
+      }
+      return fallback;
+    };
+
+    const numCols = logSheet.getLastColumn();
 
     for (let i = 0; i < itemsToProcess.length; i++) {
       const item = itemsToProcess[i];
       const itemKet = item.keterangan || data.keterangan || "-";
+      const row = new Array(numCols).fill("-");
 
-      rowsToAdd.push([
-        transactionId,
-        timestamp,
-        data.tanggal || Utilities.formatDate(now, TIMEZONE, "yyyy-MM-dd"),
-        data.jenisTransaksi || "Pengambilan",
-        data.namaMandor || "-",
-        data.lokasiProyek || "-",
-        item.kodeMaterial || item.code || "-",
-        item.deskripsiMaterial || item.description || "-",
-        Number(item.qty) || 0,
-        item.satuan || "Pcs",
-        itemKet,
-        fotoUrlString,
-        fotoFileIdString
-      ]);
+      const assign = (keys, val, fallback) => {
+        const c = findCol(keys, fallback);
+        if (c >= 0 && c < numCols) row[c] = val;
+      };
+
+      assign(["id transaksi"], transactionId, 0);
+      assign(["timestamp"], timestamp, 1);
+      assign(["tanggal"], data.tanggal || Utilities.formatDate(now, TIMEZONE, "yyyy-MM-dd"), 2);
+      assign(["kota", "cabang"], kota, 3);
+      assign(["jenis transaksi"], data.jenisTransaksi || "Pengambilan", 4);
+      assign(["mandor"], data.namaMandor || "-", 5);
+      assign(["proyek", "lokasi"], data.lokasiProyek || "-", 6);
+      assign(["kode material"], item.kodeMaterial || item.code || "-", 7);
+      assign(["deskripsi material"], item.deskripsiMaterial || item.description || "-", 8);
+      assign(["jumlah", "qty"], Number(item.qty) || 0, 9);
+      assign(["satuan"], item.satuan || "Pcs", 10);
+      assign(["kondisi", "keterangan"], itemKet, 11);
+      assign(["foto url"], fotoUrlString, 12);
+      assign(["foto file id"], fotoFileIdString, 13);
+
+      rowsToAdd.push(row);
     }
 
     if (rowsToAdd.length > 0) {
@@ -230,11 +257,12 @@ function doPost(e) {
     return jsonOutput({
       status: "success",
       transactionId: transactionId,
+      kota: kota,
       totalItems: rowsToAdd.length,
       totalPhotos: photoUrls.length,
       fotoUrls: photoUrls,
       fotoFileIds: photoFileIds,
-      message: `${rowsToAdd.length} material transaksi berhasil dicatat ke Google Sheets.`
+      message: `${rowsToAdd.length} material transaksi cabang ${kota} berhasil dicatat ke Google Sheets.`
     });
 
   } catch (error) {
@@ -257,10 +285,11 @@ function setupLogSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let logSheet = ss.getSheetByName(LOG_SHEET_NAME);
 
-  const headers = [
+  const defaultHeaders = [
     "ID Transaksi",
     "Timestamp",
     "Tanggal",
+    "Kota / Cabang",
     "Jenis Transaksi",
     "Nama Mandor",
     "Lokasi / Nama Proyek",
@@ -275,24 +304,52 @@ function setupLogSheet() {
 
   if (!logSheet) {
     logSheet = ss.insertSheet(LOG_SHEET_NAME);
-    logSheet.appendRow(headers);
+    logSheet.appendRow(defaultHeaders);
   } else {
     const lastCol = logSheet.getLastColumn();
 
-    /**
-     * Jika sheet sudah ada tetapi jumlah kolom kurang,
-     * tambahkan kolom yang kurang, misalnya Foto URL dan Foto File ID.
-     */
-    if (lastCol < headers.length) {
-      logSheet
-        .getRange(1, lastCol + 1, 1, headers.length - lastCol)
-        .setValues([headers.slice(lastCol)]);
+    if (lastCol === 0) {
+      logSheet.appendRow(defaultHeaders);
+    } else {
+      const headerRow = logSheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+      const headerLower = headerRow.map(h => String(h || "").trim().toLowerCase());
+
+      // 1. Pastikan kolom Kota / Cabang ada
+      const hasKota = headerLower.some(h => h.includes("kota") || h.includes("cabang"));
+      if (!hasKota) {
+        let tanggalCol = -1;
+        for (let c = 0; c < headerLower.length; c++) {
+          if (headerLower[c].includes("tanggal")) {
+            tanggalCol = c + 1; // 1-indexed
+            break;
+          }
+        }
+
+        if (tanggalCol > 0) {
+          logSheet.insertColumnAfter(tanggalCol);
+          logSheet.getRange(1, tanggalCol + 1).setValue("Kota / Cabang");
+        } else {
+          logSheet.getRange(1, logSheet.getLastColumn() + 1).setValue("Kota / Cabang");
+        }
+      }
+
+      // 2. Pastikan kolom Foto URL dan Foto File ID ada
+      const curLastCol = logSheet.getLastColumn();
+      const curHeaders = logSheet.getRange(1, 1, 1, curLastCol).getDisplayValues()[0].map(h => String(h || "").trim().toLowerCase());
+      
+      if (!curHeaders.some(h => h.includes("foto url"))) {
+        logSheet.getRange(1, logSheet.getLastColumn() + 1).setValue("Foto URL");
+      }
+      if (!curHeaders.some(h => h.includes("foto file id"))) {
+        logSheet.getRange(1, logSheet.getLastColumn() + 1).setValue("Foto File ID");
+      }
     }
   }
 
   // Rapikan header
+  const finalLastCol = logSheet.getLastColumn();
   logSheet
-    .getRange(1, 1, 1, headers.length)
+    .getRange(1, 1, 1, finalLastCol)
     .setFontWeight("bold")
     .setBackground("#e2e8f0")
     .setWrap(true);
@@ -366,11 +423,13 @@ function saveFotoToDrive(photoData, fileSuffix, parentData) {
 
   const file = folder.createFile(blob);
 
+  const kota = (parentData && (parentData.kota || parentData.cabang)) || "-";
   const mandor = (parentData && parentData.namaMandor) || "-";
   const proyek = (parentData && parentData.lokasiProyek) || "-";
 
   file.setDescription(
     "Transaksi: " + fileSuffix +
+    " | Kota: " + kota +
     " | Mandor: " + mandor +
     " | Proyek: " + proyek
   );
